@@ -1,0 +1,1 @@
+# Vectorizing color range

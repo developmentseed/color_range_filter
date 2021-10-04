@@ -1,0 +1,11 @@
+version: '3'
+services:
+  vector_color:
+    image: devseed/vector_color:v1
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/mnt/data
+    env_file:
+      - ./.env
