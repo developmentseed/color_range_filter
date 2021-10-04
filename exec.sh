@@ -3,5 +3,8 @@
 # Tree Canopy
 python src/range.py \
     --img_file="fixture/141155-193764-19.jpeg" \
-    --hsv_lower="33,44,50" \
-    --hsv_upper="97,131,164"
+    --hue=20,75 \
+    --value=3,145 \
+    --saturation=15,191 \
+    --area=200,420000 \
+    --kernel=3

@@ -24,15 +24,12 @@ import mercantile
     type=str,
     default="./../fixture/141155-193764-19.jpeg",
 )
-@click.option(
-    "--hsv_lower",
-    type=str,
-)
-@click.option(
-    "--hsv_upper",
-    type=str,
-)
-def main(img_file, hsv_lower, hsv_upper):
+@click.option("--hue", type=str)
+@click.option("--value", type=str)
+@click.option("--saturation", type=str)
+@click.option("--area", type=str)
+@click.option("--kernel", type=int)
+def main(img_file, hue, value, saturation, kernel, area):
     # Get path for output image
     img = cv2.imread(img_file)
     img_path = Path(img_file)
@@ -43,13 +40,17 @@ def main(img_file, hsv_lower, hsv_upper):
     tile = list(map(int, img_path.stem.split("-")))
     img_bbox = mercantile.bounds(tile[0], tile[1], tile[2])
 
-    # This part may need to be customised
-    area = [1000, 10000]
-    kernel = (3, 3)
-    hsv_lower = list(map(int, hsv_lower.split(",")))
-    hsv_upper = list(map(int, hsv_upper.split(",")))
+    # Get parameters
+    area = list(map(int, area.split(",")))
+    kernel = (kernel, kernel)
+    hue = list(map(int, hue.split(",")))
+    value = list(map(int, value.split(",")))
+    saturation = list(map(int, saturation.split(",")))
 
-    contours = get_contour(img, hsv_lower, hsv_upper, area, kernel)
+    hsv_lower = [hue[0], value[0], saturation[0]]
+    hsv_upper = [hue[1], value[1], saturation[1]]
+
+    contours, _ = get_contour(img, hsv_lower, hsv_upper, area, kernel)
 
     # Draw contour in the image
     draw_contour(img, contours, output_img_path)
