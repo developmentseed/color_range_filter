@@ -35,42 +35,68 @@ def adjust_colors_range():
     type=str,
     default="./../fixture/141155-193764-19.jpeg",
 )
-def main(img_file):
+@click.option("--hue", type=str, default="50,150")
+@click.option("--value", type=str, default="50,150")
+@click.option("--saturation", type=str, default="50,150")
+def main(img_file, hue, value, saturation):
+
+    # Get parameters
+    hue = list(map(int, hue.split(",")))
+    value = list(map(int, value.split(",")))
+    saturation = list(map(int, saturation.split(",")))
+
+    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("image", 600, 100)
+    cv2.createTrackbar("Hue Minimo", "image", hue[0], 255, lambda: None)
+    cv2.createTrackbar("Hue Maximo", "image", hue[1], 255, lambda: None)
+    cv2.createTrackbar("Value Minimo", "image", value[0], 255, lambda: None)
+    cv2.createTrackbar("Value Maximo", "image", value[1], 255, lambda: None)
+    cv2.createTrackbar("Saturation Minimo", "image", saturation[0], 255, lambda: None)
+    cv2.createTrackbar("Saturation Maximo", "image", saturation[1], 255, lambda: None)
+    cv2.createTrackbar("Kernel", "image", 3, 50, lambda: None)
+    cv2.createTrackbar("Area", "image", 1, 100, lambda: None)
+
     # Get path for output image
     img = cv2.imread(img_file)
     img_path = Path(img_file)
 
     while True:
         obj_color_range = adjust_colors_range()
-        area = [obj_color_range["area"] * 10, obj_color_range["area"] * 10000]
+        area = [obj_color_range["area"] * 100, obj_color_range["area"] * 1000]
+        print(area)
+
         kernel = obj_color_range["kernel"]
         hsv_lower = obj_color_range["lower"]
         hsv_upper = obj_color_range["upper"]
 
         print("########################")
-        print(
-            f"Hue: [{hsv_lower[0]}, {hsv_upper[0]}] \n Value: [{hsv_lower[1]}, {hsv_upper[1]}]\n Saturation: [{hsv_lower[2]}, {hsv_upper[2]}] \n Area: {area} \n Kernel: {kernel}"
-        )
-        print("########################")
+        print(f"--hue={hsv_lower[0]},{hsv_upper[0]} \\")
+        print(f"--value={hsv_lower[1]},{hsv_upper[1]} \\")
+        print(f"--saturation={hsv_lower[2]},{hsv_upper[2]} \\")
+        print(f"--area={area[0]},{area[1]} \\")
+        print(f"--kernel={kernel}")
 
-        _, dilation = get_contour(img, hsv_lower, hsv_upper, area, (kernel, kernel))
+        contours, dilation = get_contour(
+            img, hsv_lower, hsv_upper, area, (kernel, kernel)
+        )
+
+        # for countour in contours:
+        # cv2.drawContours(dilation, contours=contours, 0, [0, 255, 0], 1, cv2.LINE_AA)
+        cv2.drawContours(
+            image=dilation,
+            contours=contours,
+            contourIdx=2,
+            color=(0, 255, 0),
+            thickness=2,
+            lineType=cv2.LINE_AA,
+        )
+
         cv2.imshow("Contour", dilation)
+
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
             break
     cv2.destroyAllWindows()
-
-
-cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("image", 600, 100)
-cv2.createTrackbar("Hue Minimo", "image", 50, 255, lambda: None)
-cv2.createTrackbar("Hue Maximo", "image", 150, 255, lambda: None)
-cv2.createTrackbar("Value Minimo", "image", 50, 255, lambda: None)
-cv2.createTrackbar("Value Maximo", "image", 150, 255, lambda: None)
-cv2.createTrackbar("Saturation Minimo", "image", 50, 255, lambda: None)
-cv2.createTrackbar("Saturation Maximo", "image", 150, 255, lambda: None)
-cv2.createTrackbar("Kernel", "image", 0, 50, lambda: None)
-cv2.createTrackbar("Area", "image", 0, 100, lambda: None)
 
 
 if __name__ == "__main__":

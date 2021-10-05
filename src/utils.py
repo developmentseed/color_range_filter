@@ -4,8 +4,9 @@ import json
 from geojson import Feature, FeatureCollection as fc
 from smart_open import open
 import shapely
-from shapely.geometry import shape, mapping, Point, box, Polygon
+from shapely.geometry import shape, mapping, Point, box, Polygon, MultiPolygon
 import affine
+import mercantile
 
 
 def get_contour(img, lower_range, upper_range, area_range, kernel):
@@ -15,7 +16,7 @@ def get_contour(img, lower_range, upper_range, area_range, kernel):
         img (array): array img
         lower_range (list): List of lower values for HSV
         upper_range (list):  List of upper values for HSV
-        area_range (float): range of are to conosider
+        area_range (list): range of are to conosider
         kernel (tupple): kernet to fix the object
     """
     lower = np.array(lower_range)
@@ -28,8 +29,8 @@ def get_contour(img, lower_range, upper_range, area_range, kernel):
 
     # Adjust image for remove noise
     kernel = np.ones(kernel, np.uint8)
-    erosion = cv2.erode(mask, kernel, iterations=1)
-    dilation = cv2.dilate(erosion, kernel, iterations=1)
+    erosion = cv2.erode(mask, kernel, iterations=2)
+    dilation = cv2.dilate(erosion, kernel, iterations=2)
 
     # Get countour
     contours, _ = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -50,9 +51,9 @@ def draw_contour(img, contours, output_img_path):
         contours (arrray): Countor detected
         output_img_path (str)
     """
-    for countour in contours:
-        cv2.drawContours(img, [countour], 0, [0, 255, 0], 1, cv2.LINE_AA)
-        cv2.imwrite(output_img_path, img)
+    # for countour in contours:
+    cv2.drawContours(img, contours, 0, [0, 255, 0], 1, cv2.LINE_AA)
+    cv2.imwrite(output_img_path, img)
 
 
 def pixel2GeoPoint(pixelCoord, img_bbox, img_shape):
@@ -73,14 +74,39 @@ def pixel2GeoPoint(pixelCoord, img_bbox, img_shape):
     return Point(bounds[2], bounds[1])
 
 
-def get_vector(img, img_bbox, contours, geojson_output):
+def get_vector(img, img_bbox, contours, geojson_output, tags):
     features = []
     for contour in contours:
         points = [pixel2GeoPoint(c[0], img_bbox, list(img.shape)) for c in contour]
         area = cv2.contourArea(contour)
         poly = Polygon(points)
-        poly = poly.simplify(0.000001, preserve_topology=False)
+
+        poly = poly.buffer(0.00001, join_style=1).buffer(-0.00001, join_style=1)
+        poly = poly.simplify(0.000002, preserve_topology=True)
         feature = Feature(geometry=mapping(poly), properties={"area": area})
+        # Add tags
+        for t in tags:
+            k, v = t.split("=")
+            feature["properties"][k] = v
+
         features.append(feature)
     with open(geojson_output, "w") as out_geo:
         out_geo.write(json.dumps(fc([*features])))
+
+
+def tile_bbox(tile_name, supertile, supertile_size):
+    TILE_SIZE = 256
+    if supertile:
+        tile = list(map(int, tile_name[:-3].split("-")))
+        polygons = []
+        for t in range(0, int(supertile_size / TILE_SIZE)):
+            t_bbox = mercantile.bounds(tile[0] + t, tile[1] + t, tile[2])
+            polygon = shapely.geometry.box(*t_bbox, ccw=True)
+            polygons.append(polygon)
+        polygons = MultiPolygon(polygons)
+        return polygons.bounds
+
+    else:
+        tile = list(map(int, tile_name.split("-")))
+        img_bbox = mercantile.bounds(tile[0], tile[1], tile[2])
+        return img_bbox
