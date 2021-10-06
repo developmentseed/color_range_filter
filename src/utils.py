@@ -110,3 +110,9 @@ def tile_bbox(tile_name, supertile, supertile_size):
         tile = list(map(int, tile_name.split("-")))
         img_bbox = mercantile.bounds(tile[0], tile[1], tile[2])
         return img_bbox
+
+
+def geojson_merge(geojsons, geojson_output):
+    with open(geojson_output, "w") as outfile:
+        outfile.write("[{}]".format(",".join([open(f, "r").read() for f in geojsons])))
+        print(f"Save geojson file: {geojson_output}")

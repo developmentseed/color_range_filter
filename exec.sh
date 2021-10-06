@@ -12,36 +12,17 @@ FOLDER=data/tiles_20
 rm ${FOLDER}/*_output.png
 rm ${FOLDER}/*.geojson
 
-for img in ${FOLDER}/*.png; 
-do
-    echo ${img}
-    set -x
-    $VECTOR_COLOR python /range.py \
-        --img_file=${img} \
+$VECTOR_COLOR python src/range.py \
+        --tiles_folder=${FOLDER}/*.png \
         --hue=20,75 \
         --value=3,145 \
         --saturation=15,191 \
-        --area=100,100000 \
+        --area=200,100000 \
         --kernel=3 \
         --tags=class=tree_canopy \
         --tags=project=LULC_labeling \
-        --tags=aoi=detroit
-        # --supertile=True \
-        # --supertile_size=512 \
-    set +x
-done
-
-echo '{"type": "FeatureCollection","features": []}' >data/tree_canopy.geojson
-for geojson in ${FOLDER}/*.geojson;
-do 
-    echo ${geojson}
-    ${GEOKIT_NODE} geojson-merge data/tree_canopy.geojson $geojson > data/tmp.geojson
-    mv data/tmp.geojson data/tree_canopy.geojson
-done
-
-
-
-
+        --tags=aoi=detroit \
+        --geojson_output="${FOLDER}.geojson"
 
 # python src/obj_recognizion.py  \
 # --img_file=data/20_512/281879-388244-20-st.png \

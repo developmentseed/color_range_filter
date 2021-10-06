@@ -9,6 +9,7 @@ import requests
 
 # docker run --rm -v ${PWD}:/mnt/data/ developmentseed/geokit:node.latest geokit tilecover data/area.geojson --zoom=20 > data/tiles.geojson
 
+
 def fetch_tile(tile, tiles_folder):
     """Fetch a tiles"""
     x, y, z = tile
@@ -26,8 +27,10 @@ def fetch_tile(tile, tiles_folder):
 
 
 fc_data = json.load(open("data/tiles.geojson", "r")).get("features")
-url_map_service = "https://tiles.lulc.ds.io/mosaic/naip.latest/tiles/{z}/{x}/{y}?bidx=1,2,3"
-tiles = [f['properties']['tiles'] for f in fc_data]
+url_map_service = (
+    "https://tiles.lulc.ds.io/mosaic/naip.latest/tiles/{z}/{x}/{y}?bidx=1,2,3"
+)
+tiles = [f["properties"]["tiles"] for f in fc_data]
 
 tiles_folder = "data/tiles_20"
 os.makedirs(tiles_folder, exist_ok=True)

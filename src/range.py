@@ -13,28 +13,25 @@ import numpy as np
 import cv2
 import click
 from pathlib import Path
-from utils import draw_contour, get_vector, get_contour, tile_bbox
+import glob
+from joblib import Parallel, delayed
+from tqdm import tqdm
+
+from utils import draw_contour, get_vector, get_contour, tile_bbox, geojson_merge
 
 
-@click.command(short_help="Get range color from images")
-@click.option(
-    "--img_file",
-    help="Imagen file",
-    type=str,
-    default="./../fixture/141155-193764-19.jpeg",
-)
-@click.option("--hue", type=str)
-@click.option("--value", type=str)
-@click.option("--saturation", type=str)
-@click.option("--area", type=str)
-@click.option("--kernel", type=int)
-@click.option("--supertile", type=bool, default=False)
-@click.option("--supertile_size", type=int, default=256)
-@click.option("--tags", help="Tags to add", type=str, multiple=True, default=[])
-def main(
-    img_file, hue, value, saturation, kernel, area, supertile, supertile_size, tags
+def extract_range_color(
+    img_file,
+    hue,
+    value,
+    saturation,
+    kernel,
+    area,
+    supertile,
+    supertile_size,
+    tags,
+    write_imgs,
 ):
-
     # Get path for output image
     img = cv2.imread(img_file)
     img_path = Path(img_file)
@@ -62,9 +59,62 @@ def main(
     contours, _ = get_contour(img, hsv_lower, hsv_upper, area, kernel)
 
     # Draw contour in the image
-    # draw_contour(img, contours, output_img_path)
+    if write_imgs:
+        draw_contour(img, contours, output_img_path)
     # Get vector data from contour
     get_vector(img, img_bbox, contours, geojson_output, tags)
+    return geojson_output
+
+
+@click.command(short_help="Get range color from images")
+@click.option(
+    "--tiles_folder",
+    help="Tiles folder in x-y-x named format",
+    type=str,
+    default="./../fixture/*.jpeg",
+)
+@click.option("--hue", type=str)
+@click.option("--value", type=str)
+@click.option("--saturation", type=str)
+@click.option("--area", type=str)
+@click.option("--kernel", type=int)
+@click.option("--supertile", type=bool, default=False)
+@click.option("--supertile_size", type=int, default=256)
+@click.option("--tags", help="Tags to add", type=str, multiple=True, default=[])
+@click.option("--write_imgs", type=bool, default=False)
+@click.option("--geojson_output", type=str)
+def main(
+    tiles_folder,
+    hue,
+    value,
+    saturation,
+    kernel,
+    area,
+    supertile,
+    supertile_size,
+    tags,
+    geojson_output,
+    write_imgs,
+):
+
+    images = glob.glob(tiles_folder)
+    geojson_files = Parallel(n_jobs=-1)(
+        delayed(extract_range_color)(
+            img_file,
+            hue,
+            value,
+            saturation,
+            kernel,
+            area,
+            supertile,
+            supertile_size,
+            tags,
+            write_imgs,
+        )
+        for img_file in tqdm(images, desc=f"Processing images ...", total=len(images))
+    )
+
+    geojson_merge(geojson_files, geojson_output)
 
 
 if __name__ == "__main__":
