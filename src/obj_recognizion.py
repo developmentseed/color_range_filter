@@ -20,6 +20,17 @@ def adjust_colors_range():
     sMax = cv2.getTrackbarPos("Saturation Maximo", "image")
     kernel = cv2.getTrackbarPos("Kernel", "image")
     area = cv2.getTrackbarPos("Area", "image")
+
+    # # Print if there is a change in HSV value
+    # if( (phMin != hMin) | (psMin != sMin) | (pvMin != vMin) | (phMax != hMax) | (psMax != sMax) | (pvMax != vMax) ):
+    #     print("(hMin = %d , sMin = %d, vMin = %d), (hMax = %d , sMax = %d, vMax = %d)" % (hMin , sMin , vMin, hMax, sMax , vMax))
+    #     phMin = hMin
+    #     psMin = sMin
+    #     pvMin = vMin
+    #     phMax = hMax
+    #     psMax = sMax
+    #     pvMax = vMax
+
     return {
         "lower": [hMin, vMin, sMin],
         "upper": [hMax, vMax, sMax],
@@ -79,16 +90,7 @@ def main(img_file, hue, value, saturation):
         contours, dilation = get_contour(
             img, hsv_lower, hsv_upper, area, (kernel, kernel)
         )
-
-        cv2.drawContours(
-            image=dilation,
-            contours=contours,
-            contourIdx=2,
-            color=(0, 255, 0),
-            thickness=2,
-            lineType=cv2.LINE_AA,
-        )
-
+        
         cv2.imshow(img_path.stem, dilation)
 
         k = cv2.waitKey(1) & 0xFF
