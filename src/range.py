@@ -13,10 +13,10 @@ import numpy as np
 import cv2
 import click
 from pathlib import Path
-import glob
 from joblib import Parallel, delayed
 from tqdm import tqdm
 import json
+import glob
 from utils import (
     draw_contour,
     get_vector,
@@ -142,7 +142,7 @@ def main(
             tiles, desc=f"Downloading and Processing images ...", total=len(tiles)
         )
     )
-
+    # geojson_files = glob.glob(f"{output_folder}/*.geojson")
     geojson_files = [f for f in geojson_files if f is not None]
     geojson_merge(geojson_files, geojson_output)
 

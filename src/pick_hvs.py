@@ -13,15 +13,15 @@ def pick_color(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         pixel = image_hsv[y, x]
         # you might want to adjust the ranges(+-10, etc):
-        upper = np.array([pixel[0] + 10, pixel[1] + 10, pixel[2] + 40])
-        lower = np.array([pixel[0] - 10, pixel[1] - 10, pixel[2] - 40])
+        # range_pixels = 10
+        upper = np.array([pixel[0] + range_pixels, pixel[1] + range_pixels, pixel[2] + range_pixels])
+        lower = np.array([pixel[0] - range_pixels, pixel[1] - range_pixels, pixel[2] - range_pixels])
 
-        print(pixel, lower, upper)
-
+        # print(pixel, lower, upper)
         print("######################## Max and Min")
         print(f"--hue={lower[0]},{upper[0]} \\")
-        print(f"--saturation={lower[1]},{upper[1]} \\")
-        print(f"--value={lower[2]},{upper[2]} \\")
+        print(f"--saturation={lower[2]},{upper[2]} \\")
+        print(f"--value={lower[1]},{upper[1]} \\")
 
         kernel = (2, 2)
         image_mask = cv2.inRange(image_hsv, lower, upper)

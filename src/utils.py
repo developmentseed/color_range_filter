@@ -118,8 +118,10 @@ def tile_bbox(tile_name, supertile, supertile_size):
 
 def geojson_merge(geojsons, geojson_output):
     with open(geojson_output, "w") as outfile:
-        outfile.write("[{}]".format(",".join([open(f, "r").read() for f in geojsons])))
-        print(f"Save geojson file: {geojson_output}")
+        features = [json.load(open(f, "r")).get("features") for f in geojsons]
+        features = [item for sub_features in features for item in sub_features]
+        with open(geojson_output, "w") as out_geo:
+            out_geo.write(json.dumps(fc(features)))
 
 
 def fetch_tile(tile, url_map_service, tiles_folder):
