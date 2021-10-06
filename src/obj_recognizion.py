@@ -80,8 +80,6 @@ def main(img_file, hue, value, saturation):
             img, hsv_lower, hsv_upper, area, (kernel, kernel)
         )
 
-        # for countour in contours:
-        # cv2.drawContours(dilation, contours=contours, 0, [0, 255, 0], 1, cv2.LINE_AA)
         cv2.drawContours(
             image=dilation,
             contours=contours,
@@ -91,7 +89,7 @@ def main(img_file, hue, value, saturation):
             lineType=cv2.LINE_AA,
         )
 
-        cv2.imshow("Contour", dilation)
+        cv2.imshow(img_path.stem, dilation)
 
         k = cv2.waitKey(1) & 0xFF
         if k == 27:

@@ -13,6 +13,8 @@ RUN pip install geojson
 RUN pip install smart_open
 RUN pip install mercantile
 RUN pip install jq
+RUN pip install requests
+RUN pip install supermercado
 COPY src/ /
 WORKDIR /mnt
 

@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import cv2
 import json
@@ -7,6 +8,9 @@ import shapely
 from shapely.geometry import shape, mapping, Point, box, Polygon, MultiPolygon
 import affine
 import mercantile
+from joblib import Parallel, delayed
+from tqdm import tqdm
+import requests
 
 
 def get_contour(img, lower_range, upper_range, area_range, kernel):
@@ -83,7 +87,7 @@ def get_vector(img, img_bbox, contours, geojson_output, tags):
 
         poly = poly.buffer(0.00001, join_style=1).buffer(-0.00001, join_style=1)
         poly = poly.simplify(0.000002, preserve_topology=True)
-        feature = Feature(geometry=mapping(poly), properties={"area": area})
+        feature = Feature(geometry=mapping(poly), properties={})
         # Add tags
         for t in tags:
             k, v = t.split("=")
@@ -116,3 +120,32 @@ def geojson_merge(geojsons, geojson_output):
     with open(geojson_output, "w") as outfile:
         outfile.write("[{}]".format(",".join([open(f, "r").read() for f in geojsons])))
         print(f"Save geojson file: {geojson_output}")
+
+
+def fetch_tile(tile, url_map_service, tiles_folder):
+    """Fetch a tiles"""
+    x, y, z = tile
+    url = url_map_service.format(x=x, z=z, y=y)
+    tilefilename = f"{tiles_folder}/{x}-{y}-{z}.png"
+    if not os.path.isfile(tilefilename):
+        r = requests.get(url, timeout=2000)
+        if r.status_code == 200:
+            with open(tilefilename, "wb") as f:
+                f.write(r.content)
+            return tilefilename
+        else:
+            logger.error(f"No found image... {url}")
+            return None
+    return tilefilename
+
+
+def tile_format(line):
+    str_tile = (
+        line.replace('"', "")
+        .replace("(", "")
+        .replace(")", "")
+        .replace("\n", "")
+        .replace(", ", "-")
+        .replace(",", "-")
+    )
+    return list(map(int, str_tile.split("-")))
