@@ -25,6 +25,25 @@ pixel = (0, 0, 0)
 
 
 def adjust_colors_range():
+    """Get the HSV values to adjust the image
+
+    Returns:
+        dict: dictionary of values
+    """
+    # Adjust values to get the desired object
+    hMin = cv2.getTrackbarPos("Hue Minimo", "image")
+    hMax = cv2.getTrackbarPos("Hue Maximo", "image")
+    vMin = cv2.getTrackbarPos("Value Minimo", "image")
+    vMax = cv2.getTrackbarPos("Value Maximo", "image")
+    sMin = cv2.getTrackbarPos("Saturation Minimo", "image")
+    sMax = cv2.getTrackbarPos("Saturation Maximo", "image")
+    kernel = cv2.getTrackbarPos("Kernel", "image")
+    area = cv2.getTrackbarPos("Area", "image")
+
+    return [hMin, vMin, sMin], [hMax, vMax, sMax]
+
+
+def adjust_colors_range():
     pixel_range = cv2.getTrackbarPos("Pixel_range", "image")
     kernel = cv2.getTrackbarPos("Kernel", "image")
     area = cv2.getTrackbarPos("Area", "image")
