@@ -45,7 +45,7 @@ def get_contour(img, lower_range, upper_range, area_range, kernel):
         area = cv2.contourArea(contour)
         if area > area_range[0] and area < area_range[1]:
             contours_fixed.append(contour)
-    return contours_fixed, dilation
+    return contours_fixed, mask, dilation
 
 
 def draw_contour(img, contours, output_img_path):
@@ -87,7 +87,7 @@ def get_vector(img, img_bbox, contours, geojson_output, tags):
 
         poly = poly.buffer(0.00001, join_style=1).buffer(-0.00001, join_style=1)
         poly = poly.simplify(0.000002, preserve_topology=True)
-        feature = Feature(geometry=mapping(poly), properties={})
+        feature = Feature(geometry=mapping(poly), properties={"area":area})
         # Add tags
         for t in tags:
             k, v = t.split("=")
@@ -118,8 +118,10 @@ def tile_bbox(tile_name, supertile, supertile_size):
 
 def geojson_merge(geojsons, geojson_output):
     with open(geojson_output, "w") as outfile:
-        outfile.write("[{}]".format(",".join([open(f, "r").read() for f in geojsons])))
-        print(f"Save geojson file: {geojson_output}")
+        features = [json.load(open(f, "r")).get("features") for f in geojsons]
+        features = [item for sub_features in features for item in sub_features]
+        with open(geojson_output, "w") as out_geo:
+            out_geo.write(json.dumps(fc(features)))
 
 
 def fetch_tile(tile, url_map_service, tiles_folder):
