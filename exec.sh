@@ -12,10 +12,10 @@ $VECTOR_COLOR python src/range.py \
     --geojson_tiles_file=${TILES_FILE} \
     --output_folder=${FOLDER} \
     --url_map_service="https://tiles.lulc.ds.io/mosaic/naip.latest/tiles/{z}/{x}/{y}?bidx=1,2,3" \
-    --hsv_lower=31,25,9 \
-    --hsv_upper=131,125,189 \
-    --area=2000,45000000 \
-    --kernel=1 \
+    --hsv_lower=20,3,15 \
+    --hsv_upper=75,145,191 \
+    --area=2000,80000 \
+    --kernel=2 \
     --tags=class=tree_canopy \
     --tags=project=LULC_labeling \
     --tags=aoi=detroit \
@@ -34,6 +34,3 @@ $VECTOR_COLOR python src/range.py \
 #     --tags=project=LULC_labeling \
 #     --tags=aoi=detroit \
 #     --geojson_output="${FOLDER}_water.geojson"
-
-
-
