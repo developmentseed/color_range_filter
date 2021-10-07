@@ -1,10 +1,35 @@
+"""
+script is to get range of colors 
+Author: @developmentseed
+Run:
+    python hsv_color_picker.py --image_file=data/tree.png
+
+"""
 import cv2
 import numpy as np
 import sys
 import click
+from utils import (
+    draw_contour,
+    get_vector,
+    get_contour,
+    tile_bbox,
+    geojson_merge,
+    fetch_tile,
+    tile_format,
+)
 
 image_hsv = None
-pixel = (0,0,0) #RANDOM DEFAULT VALUE
+image_rgb = None
+pixel = (0, 0, 0)
+
+
+def adjust_colors_range():
+    pixel_range = cv2.getTrackbarPos("Pixel_range", "image")
+    kernel = cv2.getTrackbarPos("Kernel", "image")
+    area = cv2.getTrackbarPos("Area", "image")
+    return pixel_range, kernel, area
+
 
 def check_boundaries(value, tolerance, ranges, upper_or_lower):
     if ranges == 0:
@@ -14,9 +39,9 @@ def check_boundaries(value, tolerance, ranges, upper_or_lower):
         # set the boundary for saturation and value
         boundary = 255
 
-    if(value + tolerance > boundary):
+    if value + tolerance > boundary:
         value = boundary
-    elif (value - tolerance < 0):
+    elif value - tolerance < 0:
         value = 0
     else:
         if upper_or_lower == 1:
@@ -25,49 +50,74 @@ def check_boundaries(value, tolerance, ranges, upper_or_lower):
             value = value - tolerance
     return value
 
-def pick_color(event,x,y,flags,param):
+
+def pick_color(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
-        pixel = image_hsv[y,x]
+        pixel = image_hsv[y, x]
+        pixel_range, kernel, area = adjust_colors_range()
 
-        #HUE, SATURATION, AND VALUE (BRIGHTNESS) RANGES. TOLERANCE COULD BE ADJUSTED.
-        # Set range = 0 for hue and range = 1 for saturation and brightness
-        # set upper_or_lower = 1 for upper and upper_or_lower = 0 for lower
-        hue_upper = check_boundaries(pixel[0], 10, 0, 1)
-        hue_lower = check_boundaries(pixel[0], 10, 0, 0)
-        saturation_upper = check_boundaries(pixel[1], 10, 1, 1)
-        saturation_lower = check_boundaries(pixel[1], 10, 1, 0)
-        value_upper = check_boundaries(pixel[2], 40, 1, 1)
-        value_lower = check_boundaries(pixel[2], 40, 1, 0)
+        # Get Range of pixel and get min and max hsv
+        hue_upper = check_boundaries(pixel[0], pixel_range, 0, 1)
+        hue_lower = check_boundaries(pixel[0], pixel_range, 0, 0)
+        saturation_upper = check_boundaries(pixel[1], pixel_range, 1, 1)
+        saturation_lower = check_boundaries(pixel[1], pixel_range, 1, 0)
+        value_upper = check_boundaries(pixel[2], pixel_range + 40, 1, 1)
+        value_lower = check_boundaries(pixel[2], pixel_range + 40, 1, 0)
 
-        upper =  np.array([hue_upper, saturation_upper, value_upper])
-        lower =  np.array([hue_lower, saturation_lower, value_lower])
+        upper = np.array([hue_upper, saturation_upper, value_upper])
+        lower = np.array([hue_lower, saturation_lower, value_lower])
+        area_range = [area * 10, area * 100000]
+
+        # Print values to use later
+        print("##################### HSV values .....")
         print(lower, upper)
+        print(lower, upper)
+        str_lower = ",".join(str(e) for e in lower.tolist())
+        str_upper = ",".join(str(e) for e in upper.tolist())
+        str_area = ",".join(str(e) for e in area_range)
 
-        #A MONOCHROME MASK FOR GETTING A BETTER VISION OVER THE COLORS 
-        image_mask = cv2.inRange(image_hsv,lower,upper)
-        
-        kernel = (2, 2)
-        image_mask = cv2.inRange(image_hsv, lower, upper)
-        kernel = np.ones(kernel, np.uint8)
-        erosion = cv2.erode(image_mask, kernel, iterations=2)
-        dilation = cv2.dilate(erosion, kernel, iterations=2)
+        print(f"--hsv_lower={str_lower} \\")
+        print(f"--hsv_upper={str_upper} \\")
+        print(f"--area={str_area} \\")
+        print(f"--kernel={kernel} \\")
 
-        cv2.imshow("Mask",image_mask)
-        cv2.imshow("Dilation",dilation)
+        contours, mask, dilation = get_contour(
+            image_rgb, lower, upper, area_range, (kernel, kernel)
+        )
 
-@click.command(short_help="Get range color from images")
+        if len(contours) > 0:
+            # Clone image to set contours
+            image_rgb_clone = image_rgb.copy()
+            img_contours = cv2.drawContours(
+                image_rgb_clone, contours, 0, [0, 255, 0], 1, cv2.LINE_AA
+            )
+            cv2.imshow("Contours", img_contours)
+
+        cv2.imshow("Mask", mask)
+        cv2.imshow("Dilation", dilation)
+
+
+@click.command(short_help="Get range of colors")
 @click.option("--image_file", type=str)
 def main(image_file):
+    global image_hsv, image_rgb, pixel
 
-    global image_hsv, pixel
+    # Set values on images
+    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("image", 600, 100)
+    cv2.createTrackbar("Pixel_range", "image", 10, 100, lambda: None)
+    cv2.createTrackbar("Kernel", "image", 3, 50, lambda: None)
+    cv2.createTrackbar("Area", "image", 1, 100, lambda: None)
+
+    # Read image
     image_src = cv2.imread(image_file)
-    cv2.imshow("BGR",image_src)
+    image_rgb = image_src
+    cv2.imshow("RGB", image_src)
+    cv2.setMouseCallback("RGB", pick_color)
 
-    #CREATE THE HSV FROM THE BGR IMAGE
-    image_hsv = cv2.cvtColor(image_src,cv2.COLOR_BGR2HSV)
-    cv2.imshow("HSV",image_hsv)
-
-    #CALLBACK FUNCTION
+    # HSV image
+    image_hsv = cv2.cvtColor(image_src, cv2.COLOR_RGB2HSV)
+    cv2.imshow("HSV", image_hsv)
     cv2.setMouseCallback("HSV", pick_color)
 
     # Terminate windows
@@ -77,5 +127,6 @@ def main(image_file):
             break
     cv2.destroyAllWindows()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     main()

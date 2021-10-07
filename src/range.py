@@ -32,9 +32,8 @@ def extract_range_color(
     tile,
     output_folder,
     url_map_service,
-    hue,
-    value,
-    saturation,
+    hsv_lower,
+    hsv_upper,
     kernel,
     area,
     supertile,
@@ -57,11 +56,12 @@ def extract_range_color(
         # Get parameters for filter image by range
         area = list(map(int, area.split(",")))
         kernel = (kernel, kernel)
-        hue = list(map(int, hue.split(",")))
-        value = list(map(int, value.split(",")))
-        saturation = list(map(int, saturation.split(",")))
-        hsv_lower = [hue[0], value[0], saturation[0]]
-        hsv_upper = [hue[1], value[1], saturation[1]]
+
+        hsv_lower = list(map(int, hsv_lower.split(",")))
+        hsv_upper = list(map(int, hsv_upper.split(",")))
+
+        # hsv_lower = [hue[0], value[0], saturation[0]]
+        # hsv_upper = [hue[1], value[1], saturation[1]]
 
         # Get tags to add in the polygon
         for t in tags:
@@ -69,7 +69,7 @@ def extract_range_color(
                 raise Exception("tags incorrect format, key=value")
 
         # Getting contours fro range color
-        contours, _ = get_contour(img, hsv_lower, hsv_upper, area, kernel)
+        contours, _, _ = get_contour(img, hsv_lower, hsv_upper, area, kernel)
 
         # Draw contour in the image
         if write_imgs:
@@ -93,23 +93,21 @@ def extract_range_color(
     help="Url map service to get the tiles",
     type=str,
 )
-@click.option("--hue", type=str)
-@click.option("--value", type=str)
-@click.option("--saturation", type=str)
-@click.option("--area", type=str)
+@click.option("--hsv_lower", type=str)
+@click.option("--hsv_upper", type=str)
 @click.option("--kernel", type=int)
+@click.option("--area", type=str)
 @click.option("--supertile", type=bool, default=False)
 @click.option("--supertile_size", type=int, default=256)
 @click.option("--tags", help="Tags to add", type=str, multiple=True, default=[])
-@click.option("--write_imgs", type=bool, default=False)
 @click.option("--geojson_output", type=str)
+@click.option("--write_imgs", type=bool, default=False)
 def main(
     geojson_tiles_file,
     output_folder,
     url_map_service,
-    hue,
-    value,
-    saturation,
+    hsv_lower,
+    hsv_upper,
     kernel,
     area,
     supertile,
@@ -128,9 +126,8 @@ def main(
             tile,
             output_folder,
             url_map_service,
-            hue,
-            value,
-            saturation,
+            hsv_lower,
+            hsv_upper,
             kernel,
             area,
             supertile,

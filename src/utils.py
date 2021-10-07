@@ -45,7 +45,7 @@ def get_contour(img, lower_range, upper_range, area_range, kernel):
         area = cv2.contourArea(contour)
         if area > area_range[0] and area < area_range[1]:
             contours_fixed.append(contour)
-    return contours_fixed, dilation
+    return contours_fixed, mask, dilation
 
 
 def draw_contour(img, contours, output_img_path):
