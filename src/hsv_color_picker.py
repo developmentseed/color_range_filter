@@ -11,17 +11,19 @@ import sys
 import click
 from utils import (
     draw_contour,
-    get_vector,
     get_contour,
+    get_vector,
     tile_bbox,
     geojson_merge,
     fetch_tile,
     tile_format,
 )
+from math import sqrt
 
 image_hsv = None
 image_rgb = None
 pixel = (0, 0, 0)
+contours_global = []
 
 
 def adjust_colors_range():
@@ -41,6 +43,36 @@ def adjust_colors_range():
     area = cv2.getTrackbarPos("Area", "image")
 
     return [hMin, vMin, sMin], [hMax, vMax, sMax]
+
+
+drawing = False  # true if mouse is pressed
+ix, iy = -1, -1
+
+# Create a function based on a CV2 Event (Left button click)
+def draw_circle(event, x, y, flags, param):
+    global ix, iy, drawing
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+        drawing = True
+        # we take note of where that mouse was located
+        ix, iy = x, y
+
+    elif event == cv2.EVENT_MOUSEMOVE:
+        drawing == True
+
+    elif event == cv2.EVENT_LBUTTONUP:
+        radius = int(math.sqrt(((ix - x) ** 2) + ((iy - y) ** 2)))
+        cv2.circle(img, (ix, iy), radius, (0, 0, 255), thickness=1)
+
+        start_point = (ix, iy)
+
+        end_point = (x, y)
+        color = (0, 255, 0)
+
+        # Line thickness of 9 px
+        thickness = 9
+        image = cv2.line(image, start_point, end_point, color, thickness)
+        drawing = False
 
 
 def adjust_colors_range():
@@ -70,11 +102,22 @@ def check_boundaries(value, tolerance, ranges, upper_or_lower):
     return value
 
 
+def print_values(lower, upper, area_range, kernel):
+    # Print values to use later
+    print("##################### HSV values .....")
+    str_lower = ",".join(str(e) for e in lower.tolist())
+    str_upper = ",".join(str(e) for e in upper.tolist())
+    str_area = ",".join(str(e) for e in area_range)
+    print(f"--hsv_lower={str_lower} \\")
+    print(f"--hsv_upper={str_upper} \\")
+    print(f"--area={str_area} \\")
+    print(f"--kernel={kernel} \\")
+
+
 def pick_color(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         pixel = image_hsv[y, x]
         pixel_range, kernel, area = adjust_colors_range()
-
         # Get Range of pixel and get min and max hsv
         hue_upper = check_boundaries(pixel[0], pixel_range, 0, 1)
         hue_lower = check_boundaries(pixel[0], pixel_range, 0, 0)
@@ -82,37 +125,26 @@ def pick_color(event, x, y, flags, param):
         saturation_lower = check_boundaries(pixel[1], pixel_range, 1, 0)
         value_upper = check_boundaries(pixel[2], pixel_range + 40, 1, 1)
         value_lower = check_boundaries(pixel[2], pixel_range + 40, 1, 0)
-
         upper = np.array([hue_upper, saturation_upper, value_upper])
         lower = np.array([hue_lower, saturation_lower, value_lower])
-        area_range = [area * 10, area * 100000]
-
-        # Print values to use later
-        print("##################### HSV values .....")
-        print(lower, upper)
-        print(lower, upper)
-        str_lower = ",".join(str(e) for e in lower.tolist())
-        str_upper = ",".join(str(e) for e in upper.tolist())
-        str_area = ",".join(str(e) for e in area_range)
-
-        print(f"--hsv_lower={str_lower} \\")
-        print(f"--hsv_upper={str_upper} \\")
-        print(f"--area={str_area} \\")
-        print(f"--kernel={kernel} \\")
-
+        area_range = [area * 1000, area * 1000000]
+        print_values(lower, upper, area_range, kernel)
         contours, mask, dilation = get_contour(
             image_rgb, lower, upper, area_range, (kernel, kernel)
         )
 
-        if len(contours) > 0:
-            # Clone image to set contours
-            image_rgb_clone = image_rgb.copy()
-            img_contours = cv2.drawContours(
-                image_rgb_clone, contours, 0, [0, 255, 0], 1, cv2.LINE_AA
+        image_rgb_clone = image_rgb.copy()
+        cv2.rectangle(
+            image_rgb_clone, (x, y), (x + pixel_range, y + pixel_range), (255, 0, 0), 2
+        )
+        for contour in contours:
+            image_rgb_clone = cv2.drawContours(
+                image_rgb_clone, [contour], 0, [255, 255, 0], 1, cv2.LINE_AA
             )
-            cv2.imshow("Contours", img_contours)
 
-        cv2.imshow("Mask", mask)
+        cv2.imshow("RGB", image_rgb_clone)
+        # cv2.imshow("Mask", mask)
+        # cv2.imshow("erosion", erosion)
         cv2.imshow("Dilation", dilation)
 
 
@@ -136,8 +168,8 @@ def main(image_file):
 
     # HSV image
     image_hsv = cv2.cvtColor(image_src, cv2.COLOR_RGB2HSV)
-    cv2.imshow("HSV", image_hsv)
-    cv2.setMouseCallback("HSV", pick_color)
+    # cv2.imshow("HSV", image_hsv)
+    # cv2.setMouseCallback("HSV", pick_color)
 
     # Terminate windows
     while True:
