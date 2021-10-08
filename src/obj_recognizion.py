@@ -82,9 +82,7 @@ def main(image_file, hsv_lower, hsv_upper, kernel):
         # if len(contours) > 0:
         # Clone image to set contours
         image_rgb_clone = img.copy()
-        img_contours = cv2.drawContours(
-            image_rgb_clone, contours, 0, [0, 255, 0], 1, cv2.LINE_AA
-        )
+        img_contours = cv2.drawContours(image_rgb_clone, contours, 0, [0, 255, 0], 1, cv2.LINE_AA)
         cv2.imshow("Contours", img_contours)
 
         cv2.imshow("Mask", mask)
