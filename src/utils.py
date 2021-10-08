@@ -96,6 +96,7 @@ def get_vector(img, img_bbox, contours, geojson_output, tags):
         features.append(feature)
     with open(geojson_output, "w") as out_geo:
         out_geo.write(json.dumps(fc([*features])))
+        print(f"Contours save at ..{geojson_output}")
 
 
 def tile_bbox(tile_name, supertile, supertile_size):

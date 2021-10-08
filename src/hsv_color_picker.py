@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import sys
 import click
+from pathlib import Path
 from utils import (
     draw_contour,
     get_contour,
@@ -18,61 +19,22 @@ from utils import (
     fetch_tile,
     tile_format,
 )
-from math import sqrt
 
 image_hsv = None
 image_rgb = None
 pixel = (0, 0, 0)
 contours_global = []
+event_tmp = None
+x_tmp = None
+y_tmp = None
+flags_tmp = None
+param_tmp = None
 
 
-def adjust_colors_range():
-    """Get the HSV values to adjust the image
+def set_values(v):
+    print("val...")
 
-    Returns:
-        dict: dictionary of values
-    """
-    # Adjust values to get the desired object
-    hMin = cv2.getTrackbarPos("Hue Minimo", "image")
-    hMax = cv2.getTrackbarPos("Hue Maximo", "image")
-    vMin = cv2.getTrackbarPos("Value Minimo", "image")
-    vMax = cv2.getTrackbarPos("Value Maximo", "image")
-    sMin = cv2.getTrackbarPos("Saturation Minimo", "image")
-    sMax = cv2.getTrackbarPos("Saturation Maximo", "image")
-    kernel = cv2.getTrackbarPos("Kernel", "image")
-    area = cv2.getTrackbarPos("Area", "image")
-
-    return [hMin, vMin, sMin], [hMax, vMax, sMax]
-
-
-drawing = False  # true if mouse is pressed
-ix, iy = -1, -1
-
-# Create a function based on a CV2 Event (Left button click)
-def draw_circle(event, x, y, flags, param):
-    global ix, iy, drawing
-
-    if event == cv2.EVENT_LBUTTONDOWN:
-        drawing = True
-        # we take note of where that mouse was located
-        ix, iy = x, y
-
-    elif event == cv2.EVENT_MOUSEMOVE:
-        drawing == True
-
-    elif event == cv2.EVENT_LBUTTONUP:
-        radius = int(math.sqrt(((ix - x) ** 2) + ((iy - y) ** 2)))
-        cv2.circle(img, (ix, iy), radius, (0, 0, 255), thickness=1)
-
-        start_point = (ix, iy)
-
-        end_point = (x, y)
-        color = (0, 255, 0)
-
-        # Line thickness of 9 px
-        thickness = 9
-        image = cv2.line(image, start_point, end_point, color, thickness)
-        drawing = False
+    pick_color("trigger", x_tmp, y_tmp, flags_tmp, param_tmp)
 
 
 def adjust_colors_range():
@@ -115,7 +77,18 @@ def print_values(lower, upper, area_range, kernel):
 
 
 def pick_color(event, x, y, flags, param):
-    if event == cv2.EVENT_LBUTTONDOWN:
+    print("pick_color")
+
+    # set global values
+    global contours_global, event_tmp, x_tmp, y_tmp, flags_tmp, param_tmp
+    # event_tmp = event
+
+    if event == cv2.EVENT_LBUTTONDOWN or event == "trigger":
+        x_tmp = x
+        y_tmp = y
+        flags_tmp = flags
+        param_tmp = param
+
         pixel = image_hsv[y, x]
         pixel_range, kernel, area = adjust_colors_range()
         # Get Range of pixel and get min and max hsv
@@ -137,6 +110,7 @@ def pick_color(event, x, y, flags, param):
         cv2.rectangle(
             image_rgb_clone, (x, y), (x + pixel_range, y + pixel_range), (255, 0, 0), 2
         )
+        contours_global = contours
         for contour in contours:
             image_rgb_clone = cv2.drawContours(
                 image_rgb_clone, [contour], 0, [255, 255, 0], 1, cv2.LINE_AA
@@ -145,7 +119,7 @@ def pick_color(event, x, y, flags, param):
         cv2.imshow("RGB", image_rgb_clone)
         # cv2.imshow("Mask", mask)
         # cv2.imshow("erosion", erosion)
-        cv2.imshow("Dilation", dilation)
+        # cv2.imshow("Dilation", dilation)
 
 
 @click.command(short_help="Get range of colors")
@@ -156,26 +130,39 @@ def main(image_file):
     # Set values on images
     cv2.namedWindow("image", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("image", 600, 100)
-    cv2.createTrackbar("Pixel_range", "image", 10, 100, lambda: None)
-    cv2.createTrackbar("Kernel", "image", 3, 50, lambda: None)
-    cv2.createTrackbar("Area", "image", 1, 100, lambda: None)
+    cv2.createTrackbar("Pixel_range", "image", 10, 100, set_values)
+    cv2.createTrackbar("Kernel", "image", 3, 50, set_values)
+    cv2.createTrackbar("Area", "image", 1, 100, set_values)
 
     # Read image
     image_src = cv2.imread(image_file)
     image_rgb = image_src
     cv2.imshow("RGB", image_src)
     cv2.setMouseCallback("RGB", pick_color)
-
     # HSV image
     image_hsv = cv2.cvtColor(image_src, cv2.COLOR_RGB2HSV)
     # cv2.imshow("HSV", image_hsv)
     # cv2.setMouseCallback("HSV", pick_color)
-
     # Terminate windows
     while True:
         k = cv2.waitKey(1) & 0xFF
         if k == 27:
             break
+
+        if cv2.waitKey(1) == 101:
+            print("########################")
+            print(f"Export data into JOSM")
+            print("########################")
+            file_path = Path(image_file)
+            img_bbox = tile_bbox(file_path.stem, True, 2048)
+            get_vector(
+                image_src,
+                img_bbox,
+                contours_global,
+                f"data/{file_path.stem}.geojson",
+                [],
+            )
+
     cv2.destroyAllWindows()
 
 
