@@ -10,6 +10,8 @@ import numpy as np
 import sys
 import click
 from pathlib import Path
+import subprocess
+
 from utils import (
     draw_contour,
     get_contour,
@@ -226,13 +228,19 @@ def main(image_file):
             print("########################")
             file_path = Path(image_file)
             img_bbox = tile_bbox(file_path.stem, True, image_rgb_size)
+            abs_path = file_path.absolute()
+            output_file = f"{abs_path}.geojson"
+            print(output_file)
+
             get_vector(
                 image_src,
                 img_bbox,
                 contours_global,
-                f"data/{file_path.stem}.geojson",
-                [],
+                output_file,
+                ["project=LULC_labeling", "aoi=detroit", "class=grass_shrub"],
             )
+            # subprocess.run(
+            #     ["wget", f"http://localhost:8111/open_file\?filename\={output_file}"])
 
     cv2.destroyAllWindows()
 
