@@ -87,7 +87,7 @@ def get_vector(img, img_bbox, contours, geojson_output, tags):
 
         poly = poly.buffer(0.00001, join_style=1).buffer(-0.00001, join_style=1)
         poly = poly.simplify(0.000002, preserve_topology=True)
-        feature = Feature(geometry=mapping(poly), properties={"area":area})
+        feature = Feature(geometry=mapping(poly), properties={})
         # Add tags
         for t in tags:
             k, v = t.split("=")
@@ -96,6 +96,7 @@ def get_vector(img, img_bbox, contours, geojson_output, tags):
         features.append(feature)
     with open(geojson_output, "w") as out_geo:
         out_geo.write(json.dumps(fc([*features])))
+        print(f"Contours save at ..{geojson_output}")
 
 
 def tile_bbox(tile_name, supertile, supertile_size):

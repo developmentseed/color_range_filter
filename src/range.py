@@ -135,9 +135,7 @@ def main(
             tags,
             write_imgs,
         )
-        for tile in tqdm(
-            tiles, desc=f"Downloading and Processing images ...", total=len(tiles)
-        )
+        for tile in tqdm(tiles, desc=f"Downloading and Processing images ...", total=len(tiles))
     )
     # geojson_files = glob.glob(f"{output_folder}/*.geojson")
     geojson_files = [f for f in geojson_files if f is not None]
