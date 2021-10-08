@@ -20,6 +20,9 @@ from utils import (
     tile_format,
 )
 
+MAX_CROP_RANGE = 10
+CROP_RANGE_MUTIPLY = 100
+
 image_hsv = None
 image_rgb = None
 pixel = (0, 0, 0)
@@ -32,21 +35,18 @@ param_tmp = None
 
 
 def set_values(v):
-    print("val...")
+    """Function to trigger the clor picker with global values"""
     pick_color("trigger", x_tmp, y_tmp, flags_tmp, param_tmp)
 
 
 def adjust_colors_range():
     """Function to get the values from sliders
     Retunrs:
-
     """
     eval_color_range = cv2.getTrackbarPos("Eval color range", "image")
     kernel = cv2.getTrackbarPos("Kernel", "image")
     area = cv2.getTrackbarPos("Area", "image")
     crop_image_range = cv2.getTrackbarPos("Crop image range", "image")
-    #multiply crop range by 100
-    crop_image_range = crop_image_range*100    
     return eval_color_range, kernel, area, crop_image_range
 
 
@@ -81,6 +81,36 @@ def print_values(lower, upper, area_range, kernel):
     print(f"--kernel={kernel} \\")
 
 
+def get_hsv_values(x, y, pixel_range, image_rgb_clone):
+    # Get pixels value  from HSV image
+    pixel = image_hsv[y, x]
+    # Get half of the values
+    pixel_range_half = int(pixel_range / 2)
+
+    # Get Range of pixel and get min and max hsv, TODO check if pixel_range  for boundaries
+    hue_upper = check_boundaries(pixel[0], pixel_range, 0, 1)
+    hue_lower = check_boundaries(pixel[0], pixel_range, 0, 0)
+    saturation_upper = check_boundaries(pixel[1], pixel_range, 1, 1)
+    saturation_lower = check_boundaries(pixel[1], pixel_range, 1, 0)
+    value_upper = check_boundaries(pixel[2], pixel_range + 40, 1, 1)
+    value_lower = check_boundaries(pixel[2], pixel_range + 40, 1, 0)
+    upper = np.array([hue_upper, saturation_upper, value_upper])
+    lower = np.array([hue_lower, saturation_lower, value_lower])
+
+    cv2.rectangle(
+        image_rgb_clone,
+        (x - pixel_range_half, y - pixel_range_half),
+        (x + pixel_range_half, y + pixel_range_half),
+        (255, 255, 0),
+        3,
+    )
+    return lower, upper
+
+
+def draw_rectagles(image_rgb_clone):
+    pass
+
+
 def pick_color(event, x, y, flags, param):
     # set global values
     global contours_global, event_tmp, x_tmp, y_tmp, flags_tmp, param_tmp
@@ -93,71 +123,63 @@ def pick_color(event, x, y, flags, param):
         flags_tmp = flags
         param_tmp = param
 
-        # Get pixels value  from HSV image
-        pixel = image_hsv[y, x]
+        # Make a clone of the image
+        image_rgb_clone = image_rgb.copy()
 
         # Get Values from window
         pixel_range, kernel, area, crop_range = adjust_colors_range()
 
-        # Get half of the values
-        pixel_range_half = int(pixel_range / 2)
+        # Extract HSV values
+        lower, upper = get_hsv_values(x, y, pixel_range, image_rgb_clone)
 
-        # Get values fro crop area
-        crop_range_half = int(crop_range / 2)
-        crop_img_rgb = image_rgb[
-            y - crop_range_half : y + crop_range_half, x - crop_range_half : x + crop_range_half
-        ]
-
-        # Get Range of pixel and get min and max hsv, TODO check if pixel_range  for boundaries
-        hue_upper = check_boundaries(pixel[0], pixel_range, 0, 1)
-        hue_lower = check_boundaries(pixel[0], pixel_range, 0, 0)
-        saturation_upper = check_boundaries(pixel[1], pixel_range, 1, 1)
-        saturation_lower = check_boundaries(pixel[1], pixel_range, 1, 0)
-        value_upper = check_boundaries(pixel[2], pixel_range + 40, 1, 1)
-        value_lower = check_boundaries(pixel[2], pixel_range + 40, 1, 0)
-        upper = np.array([hue_upper, saturation_upper, value_upper])
-        lower = np.array([hue_lower, saturation_lower, value_lower])
-        area_range = [area * 10, area * 1000]
+        # area range
+        area_range = [area * 10, area * 10000]
 
         # Print values, to use later
         print_values(lower, upper, area_range, kernel)
 
-        # Get contour values for Crop area
+        image_rgb_ = None
+        # Get values from crop area
+        if crop_range < MAX_CROP_RANGE:
+
+            crop_range_fixed = crop_range * CROP_RANGE_MUTIPLY
+            crop_range_half = int(crop_range_fixed / 2)
+            image_rgb_ = image_rgb[
+                y - crop_range_half : y + crop_range_half, x - crop_range_half : x + crop_range_half
+            ]
+
+            # Draw rectangles, for range color selector and crop selector
+            cv2.rectangle(
+                image_rgb_clone,
+                (x - crop_range_half, y - crop_range_half),
+                (x + crop_range_half, y + crop_range_half),
+                [255, 235, 59],
+                3,
+            )
+
+        else:
+            image_rgb_ = image_rgb
+
+        # Get contour values for croped or all image
         contours, mask, dilation = get_contour(
-            crop_img_rgb, lower, upper, area_range, (kernel, kernel)
-        )
-
-        # Get values of the corner to rezise the contour
-        x_crop_corner_min = x - crop_range_half
-        y_crop_corner_min = y - crop_range_half
-
-        # Make a clone of the image and Draw rectangles, for range color selector and crop selector
-        image_rgb_clone = image_rgb.copy()
-        cv2.rectangle(
-            image_rgb_clone,
-            (x - pixel_range_half, y - pixel_range_half),
-            (x + pixel_range_half, y + pixel_range_half),
-            (255, 255, 0),
-            3,
-        )
-
-        cv2.rectangle(
-            image_rgb_clone,
-            (x - crop_range_half, y - crop_range_half),
-            (x + crop_range_half, y + crop_range_half),
-            [255, 235, 59 ],
-            3,
+            image_rgb_, lower, upper, area_range, (kernel, kernel)
         )
 
         # Draw crop contours on the original image
         contours_fixed = []
         for contour in contours:
-            contour_fixed = np.add(contour, np.array([[[x_crop_corner_min, y_crop_corner_min]]]))
-            image_rgb_clone = cv2.drawContours(
-                image_rgb_clone, [contour_fixed], 0, [0, 255, 0], 1, cv2.LINE_AA
-            )
+            # In case the had a croped image
+            if crop_range < MAX_CROP_RANGE:
+                # Get values of the corner to rezise the contour
+                x_crop_corner_min = x - crop_range_half
+                y_crop_corner_min = y - crop_range_half
+                contour = np.add(contour, np.array([[[x_crop_corner_min, y_crop_corner_min]]]))
 
-            contours_fixed.append(contour_fixed)
+            image_rgb_clone = cv2.drawContours(
+                image_rgb_clone, [contour], 0, [0, 255, 0], 1, cv2.LINE_AA
+            )
+            contours_fixed.append(contour)
+
         contours_global = contours_fixed
 
         # Show images
@@ -182,11 +204,11 @@ def main(image_file):
 
     # Window: Set values on images for selection
     cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("image", 600, 100)
+    cv2.resizeWindow("image", 700, 80)
     cv2.createTrackbar("Eval color range", "image", 30, 50, set_values)
     cv2.createTrackbar("Kernel", "image", 1, 10, set_values)
     cv2.createTrackbar("Area", "image", 1, 100, set_values)
-    cv2.createTrackbar("Crop image range", "image", 1, int(image_rgb_size/100), set_values)
+    cv2.createTrackbar("Crop image range", "image", 1, MAX_CROP_RANGE, set_values)
 
     # HSV image
     image_hsv = cv2.cvtColor(image_src, cv2.COLOR_RGB2HSV)
