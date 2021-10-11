@@ -97,7 +97,7 @@ def extract_range_color(
     "--output_folder",
     help="Output folder to store tiles and geojson files",
     type=str,
-    required=True,
+    required=False,
 )
 @click.option(
     "--url_map_service", help="Url map service to get the tiles", type=str, required=False
