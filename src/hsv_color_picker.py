@@ -135,7 +135,7 @@ def pick_color(event, x, y, flags, param):
         lower, upper = get_hsv_values(x, y, pixel_range, image_rgb_clone)
 
         # area range
-        area_range = [area * 10, area * 10000]
+        area_range = [area * 100, area * 100000]
 
         # Print values, to use later
         print_values(lower, upper, area_range, kernel)
