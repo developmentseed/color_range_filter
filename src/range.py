@@ -41,8 +41,13 @@ def extract_range_color(
     tags,
     write_imgs,
 ):
-    # Download tile
-    img_file = fetch_tile(tile, url_map_service, output_folder)
+    img_file = None
+    if supertile:
+        img_file = tile
+    else:
+        # Download tile
+        img_file = fetch_tile(tile, url_map_service, output_folder)
+
     if img_file is not None:
         # Get path for output image
         img = cv2.imread(img_file)
@@ -82,61 +87,90 @@ def extract_range_color(
 
 
 @click.command(short_help="Get range color from images")
-@click.option("--geojson_tiles_file", type=str, help="Geojson files of grid of tiles")
+@click.option(
+    "--geojson_tiles_file", type=str, help="Geojson files of grid of tiles", required=False
+)
+@click.option("--supertile", type=bool, default=False, required=False)
+@click.option("--supertile_size", type=int, default=256, required=False)
+@click.option("--supertile_folder", type=str, required=False)
 @click.option(
     "--output_folder",
     help="Output folder to store tiles and geojson files",
     type=str,
+    required=True,
 )
 @click.option(
-    "--url_map_service",
-    help="Url map service to get the tiles",
-    type=str,
+    "--url_map_service", help="Url map service to get the tiles", type=str, required=False
 )
-@click.option("--hsv_lower", type=str)
-@click.option("--hsv_upper", type=str)
-@click.option("--kernel", type=int)
-@click.option("--area", type=str)
-@click.option("--supertile", type=bool, default=False)
-@click.option("--supertile_size", type=int, default=256)
-@click.option("--tags", help="Tags to add", type=str, multiple=True, default=[])
-@click.option("--geojson_output", type=str)
-@click.option("--write_imgs", type=bool, default=False)
+@click.option("--hsv_lower", type=str, required=True)
+@click.option("--hsv_upper", type=str, required=True)
+@click.option("--kernel", type=int, required=True)
+@click.option("--area", type=str, required=True)
+@click.option("--tags", help="Tags to add", type=str, multiple=True, default=[], required=False)
+@click.option("--geojson_output", type=str, required=True)
+@click.option("--write_imgs", type=bool, default=False, required=False)
 def main(
     geojson_tiles_file,
+    supertile,
+    supertile_size,
+    supertile_folder,
     output_folder,
     url_map_service,
     hsv_lower,
     hsv_upper,
     kernel,
     area,
-    supertile,
-    supertile_size,
     tags,
     geojson_output,
     write_imgs,
 ):
 
-    features = json.load(open(geojson_tiles_file, "r")).get("features")
-    tiles = [tile_format(f["id"]) for f in features]
-    os.makedirs(output_folder, exist_ok=True)
-
-    geojson_files = Parallel(n_jobs=-1)(
-        delayed(extract_range_color)(
-            tile,
-            output_folder,
-            url_map_service,
-            hsv_lower,
-            hsv_upper,
-            kernel,
-            area,
-            supertile,
-            supertile_size,
-            tags,
-            write_imgs,
+    geojson_files = None
+    if supertile:
+        # in case we pass the supertiles folder
+        supertiles_files = glob.glob(f"{supertile_folder}/*.png")
+        geojson_files = Parallel(n_jobs=-1)(
+            delayed(extract_range_color)(
+                stile,
+                output_folder,
+                url_map_service,
+                hsv_lower,
+                hsv_upper,
+                kernel,
+                area,
+                supertile,
+                supertile_size,
+                tags,
+                write_imgs,
+            )
+            for stile in tqdm(
+                supertiles_files,
+                desc=f"Downloading and Processing images ...",
+                total=len(supertiles_files),
+            )
         )
-        for tile in tqdm(tiles, desc=f"Downloading and Processing images ...", total=len(tiles))
-    )
+
+    else:
+        # In case we pass a geojson tiles list
+        features = json.load(open(geojson_tiles_file, "r")).get("features")
+        tiles = [tile_format(f["id"]) for f in features]
+        os.makedirs(output_folder, exist_ok=True)
+        geojson_files = Parallel(n_jobs=-1)(
+            delayed(extract_range_color)(
+                tile,
+                output_folder,
+                url_map_service,
+                hsv_lower,
+                hsv_upper,
+                kernel,
+                area,
+                supertile,
+                supertile_size,
+                tags,
+                write_imgs,
+            )
+            for tile in tqdm(tiles, desc=f"Downloading and Processing images ...", total=len(tiles))
+        )
     # geojson_files = glob.glob(f"{output_folder}/*.geojson")
     geojson_files = [f for f in geojson_files if f is not None]
     geojson_merge(geojson_files, geojson_output)
