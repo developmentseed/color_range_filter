@@ -2,7 +2,7 @@
 
 VECTOR_COLOR="docker run --rm -v ${PWD}:/mnt developmentseed/vector_color:v1"
 SUPER_TILES="docker run -v ${PWD}:/mnt devseed/super-tiles:v1 "
-
+# ./exec_supertiles.sh data/box_162
 SUPERTILES_FOLDER=$1
 BOUNDARY=$2
 
@@ -25,7 +25,7 @@ BOUNDARY=$2
 ################################################################
 ######## check the right ranges to run the script
 ################################################################
-# python src/hsv_color_picker.py --image_file=data/area/super_tiles/281856-388368-20-st.png
+# python src/hsv_color_picker.py --image_file=data/box_27/281856-388368-20-st.png
 
 ###############################################################
 ####### Get grass from supertiles
@@ -35,12 +35,13 @@ ${VECTOR_COLOR} python src/range.py \
     --supertile=True \
     --supertile_size=4096 \
     --supertile_folder=${SUPERTILES_FOLDER} \
-    --hsv_lower=38,33,56 \
-    --hsv_upper=126,121,224 \
-    --area=1000,950000 \
-    --kernel=6 \
+    --hsv_lower=75,27,85 \
+    --hsv_upper=99,51,189 \
+    --area=2500,8000 \
+    --kernel=1 \
     --tags=class=grass_shrub \
     --tags=project=LULC_labeling \
     --tags=aoi=detroit \
-    --geojson_output=data/area_grass.geojson
+    --geojson_output=${SUPERTILES_FOLDER}_grass.geojson
 zip ${SUPERTILES_FOLDER}.zip ${SUPERTILES_FOLDER}/*.geojson
+

@@ -106,6 +106,12 @@ def get_hsv_values(x, y, pixel_range, image_rgb_clone):
         (255, 255, 0),
         3,
     )
+
+    image_rgb_test = image_rgb[
+        y - pixel_range_half : y + pixel_range_half, x - pixel_range_half : x + pixel_range_half
+    ]
+    cv2.imshow("test", image_rgb_test)
+
     return lower, upper
 
 
@@ -135,7 +141,7 @@ def pick_color(event, x, y, flags, param):
         lower, upper = get_hsv_values(x, y, pixel_range, image_rgb_clone)
 
         # area range
-        area_range = [area * 100, area * 100000]
+        area_range = [area * 100, area * 10000]
 
         # Print values, to use later
         print_values(lower, upper, area_range, kernel)
@@ -178,7 +184,7 @@ def pick_color(event, x, y, flags, param):
                 contour = np.add(contour, np.array([[[x_crop_corner_min, y_crop_corner_min]]]))
 
             image_rgb_clone = cv2.drawContours(
-                image_rgb_clone, [contour], 0, [0, 255, 0], 1, cv2.LINE_AA
+                image_rgb_clone, [contour], 0, [0, 0, 255], 1, cv2.LINE_AA
             )
             contours_fixed.append(contour)
 
@@ -209,8 +215,8 @@ def main(image_file):
     cv2.resizeWindow("image", 700, 80)
     cv2.createTrackbar("Eval color range", "image", 30, 50, set_values)
     cv2.createTrackbar("Kernel", "image", 1, 10, set_values)
-    cv2.createTrackbar("Area", "image", 1, 100, set_values)
-    cv2.createTrackbar("Crop image range", "image", 1, MAX_CROP_RANGE, set_values)
+    cv2.createTrackbar("Area", "image", 1, 500, set_values)
+    cv2.createTrackbar("Crop image range", "image", MAX_CROP_RANGE, MAX_CROP_RANGE, set_values)
 
     # HSV image
     image_hsv = cv2.cvtColor(image_src, cv2.COLOR_RGB2HSV)
